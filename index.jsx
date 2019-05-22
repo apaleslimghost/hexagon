@@ -124,30 +124,23 @@ const useImmutableState = initial => {
 }
 
 const Network = () => {
-	const [vertices, updateVertices] = useImmutableState(
-		Set.of(new TriangleGridVertex({ u: 0, v: 0 })),
+	const [node, updateNode] = useImmutableState(
+		new TriangleGridVertex({ u: 0, v: 0 }),
 	)
-	const [edges, updateEdges] = useImmutableState(new Set())
 
-	const possibleEdges = vertices
-		.flatMap(v => v.protrudes)
-		.toSet()
-		.subtract(edges)
+	const [edges, updateEdges] = useImmutableState(
+		Set.of(new TriangleGridEdge({ u: 0, v: 0, s: 'S' })),
+	)
 
-	const addVertexForEdge = edge => () => {
+	const possibleExpansionEdges = node.protrudes.toSet().subtract(edges)
+
+	const expand = edge => () => {
 		updateEdges(es => es.add(edge))
-		updateVertices(vs => edge.endpoints.forEach(v => vs.add(v)))
 	}
 
 	return (
 		<>
-			{vertices.valueSeq().map(v => (
-				<Vertex
-					key={`${v.u},${v.v}`}
-					vertex={v}
-					theme={{ scale: 100, colour: 'red' }}
-				/>
-			))}
+			<Vertex vertex={node} theme={{ scale: 100, colour: 'red' }} />
 
 			{edges.valueSeq().map(e => (
 				<Edge
@@ -157,13 +150,13 @@ const Network = () => {
 				/>
 			))}
 
-			{possibleEdges.valueSeq().map(e => (
+			{possibleExpansionEdges.valueSeq().map(e => (
 				<Edge
 					key={`${e.u},${e.v},${e.s}`}
 					edge={e}
 					data-edge={JSON.stringify(e)}
 					colour='grey'
-					onClick={addVertexForEdge(e)}
+					onClick={expand(e)}
 				/>
 			))}
 		</>
