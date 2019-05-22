@@ -106,6 +106,10 @@ const Edge = styled.div`
 	transform-origin: left center;
 	transform: rotate(${({ edge }) => edge.angle}deg);
 
+	&:hover {
+		background: blue;
+	}
+
 	main.debug &::after {
 		content: "${({ edge }) => `${edge.u},${edge.v} ${edge.s}`}";
 		margin-left: 1em;
@@ -130,6 +134,8 @@ const Network = () => {
 		updateVertices(vs => edge.endpoints.forEach(v => vs.add(v)))
 	}
 
+	const inNetwork = edge => edge.endpoints.isSubset(vertices)
+
 	return (
 		<>
 			{vertices.valueSeq().map(v => (
@@ -145,7 +151,7 @@ const Network = () => {
 					key={`${e.u},${e.v},${e.s}`}
 					edge={e}
 					data-edge={JSON.stringify(e)}
-					colour='grey'
+					colour={inNetwork(e) ? 'black' : 'grey'}
 					onClick={addVertexForEdge(e)}
 				/>
 			))}
