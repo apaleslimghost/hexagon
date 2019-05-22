@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useReducer } from 'react'
 import { render } from 'react-dom'
 import styled, { ThemeProvider } from 'styled-components'
-import { Record, Set, List } from 'immutable'
+import { Record, Set, List, fromJS } from 'immutable'
 
 class TriangleGridEdge extends Record({ u: 0, v: 0, s: 'W' }) {
 	get x() {
@@ -118,31 +118,42 @@ const Edge = styled.div`
 
 const v = new TriangleGridVertex()
 
-const useImmutableState = initial => {
-	const [state, setState] = useState(initial)
-	return [state, fn => setState(current => current.withMutations(fn))]
+const useImmutableReducer = (reducer, initialState) =>
+	useReducer(
+		(state, action) => state.update(draft => reducer(draft, action)),
+		initialState,
+	)
+
+function reducer(state, action) {
+	switch (action.type) {
+		case 'expand':
+			return state.update('edges', e => e.add(action.edge))
+			break
+	}
 }
 
+const State = Record({
+	edges: new Set(),
+	node: new TriangleGridVertex(),
+})
+
+const initialState = new State({
+	edges: Set.of(new TriangleGridEdge({ u: 0, v: 0, s: 'S' })),
+	node: new TriangleGridVertex({ u: 0, v: 0 }),
+})
+
 const Network = () => {
-	const [node, updateNode] = useImmutableState(
-		new TriangleGridVertex({ u: 0, v: 0 }),
-	)
+	const [state, dispatch] = useImmutableReducer(reducer, initialState)
 
-	const [edges, updateEdges] = useImmutableState(
-		Set.of(new TriangleGridEdge({ u: 0, v: 0, s: 'S' })),
-	)
-
-	const possibleExpansionEdges = node.protrudes.toSet().subtract(edges)
-
-	const expand = edge => () => {
-		updateEdges(es => es.add(edge))
-	}
+	const possibleExpansionEdges = state.node.protrudes
+		.toSet()
+		.subtract(state.edges)
 
 	return (
 		<>
-			<Vertex vertex={node} theme={{ scale: 100, colour: 'red' }} />
+			<Vertex vertex={state.node} theme={{ scale: 100, colour: 'red' }} />
 
-			{edges.valueSeq().map(e => (
+			{state.edges.valueSeq().map(e => (
 				<Edge
 					key={`${e.u},${e.v},${e.s}`}
 					edge={e}
@@ -156,7 +167,7 @@ const Network = () => {
 					edge={e}
 					data-edge={JSON.stringify(e)}
 					colour='grey'
-					onClick={expand(e)}
+					onClick={() => dispatch({ type: 'expand', edge: e })}
 				/>
 			))}
 		</>
