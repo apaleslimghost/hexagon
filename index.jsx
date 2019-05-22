@@ -5,18 +5,18 @@ import { Record, Set } from 'immutable'
 
 class TriangleGridEdge extends Record({ u: 0, v: 0, s: 'W' }) {
 	get x() {
-		return this.u + 0.5 * this.v
+		return this.s === 'E' ? this.u + 0.5 * (this.v + 1) : this.u + 0.5 * this.v
 	}
 
 	get y() {
-		return ROOT3_2 * this.v
+		return this.s === 'E' ? -ROOT3_2 * (this.v + 1) : -ROOT3_2 * this.v
 	}
 
 	get angle() {
 		return {
-			E: 0,
-			S: 60,
-			N: -60,
+			S: 0,
+			E: 60,
+			W: -60,
 		}[this.s]
 	}
 }
@@ -29,17 +29,17 @@ class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
 	}
 
 	get y() {
-		return ROOT3_2 * this.v
+		return -ROOT3_2 * this.v
 	}
 
 	get protrudes() {
 		return Set.of(
-			new TriangleGridEdge({ u: this.u, v: this.v, s: 'N' }),
-			new TriangleGridEdge({ u: this.u, v: this.v, s: 'E' }),
+			new TriangleGridEdge({ u: this.u, v: this.v, s: 'W' }),
 			new TriangleGridEdge({ u: this.u, v: this.v, s: 'S' }),
-			new TriangleGridEdge({ u: this.u, v: this.v - 1, s: 'S' }),
+			new TriangleGridEdge({ u: this.u, v: this.v - 1, s: 'E' }),
+			new TriangleGridEdge({ u: this.u, v: this.v - 1, s: 'W' }),
+			new TriangleGridEdge({ u: this.u - 1, v: this.v, s: 'S' }),
 			new TriangleGridEdge({ u: this.u - 1, v: this.v, s: 'E' }),
-			new TriangleGridEdge({ u: this.u - 1, v: this.v + 1, s: 'N' }),
 		)
 	}
 
@@ -83,6 +83,11 @@ const Edge = styled.div`
 	left: calc(50vw + ${({ theme, edge }) => theme.scale * edge.x}px);
 	transform-origin: left center;
 	transform: rotate(${({ edge }) => edge.angle}deg);
+
+	main.debug &::after {
+		content: "${({ edge }) => `${edge.u},${edge.v} ${edge.s}`}";
+		margin-left: 1em;
+	}
 `
 
 const v = new TriangleGridVertex()
