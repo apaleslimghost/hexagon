@@ -1,4 +1,4 @@
-import React, { useReducer } from 'react'
+import React, { useReducer, Fragment } from 'react'
 import { render } from 'react-dom'
 import styled, { ThemeProvider } from 'styled-components'
 import { Record, Set, List, fromJS } from 'immutable'
@@ -124,13 +124,32 @@ const useImmutableReducer = (reducer, initialState) =>
 		initialState,
 	)
 
-function reducer(state, action) {
-	switch (action.type) {
-		case 'expand':
-			return state.update('edges', e => e.add(action.edge))
-			break
-	}
+const moves = {
+	expand: {
+		render: (state, dispatch) => {
+			const possibleExpansionEdges = state.node.protrudes
+				.toSet()
+				.subtract(state.edges)
+
+			return (
+				<>
+					{possibleExpansionEdges.valueSeq().map(e => (
+						<Edge
+							key={`${e.u},${e.v},${e.s}`}
+							edge={e}
+							data-edge={JSON.stringify(e)}
+							colour='grey'
+							onClick={() => dispatch({ edge: e })}
+						/>
+					))}
+				</>
+			)
+		},
+		reduce: (state, action) => state.update('edges', e => e.add(action.edge)),
+	},
 }
+
+const movesReducer = (state, action) => moves[action.type].reduce(state, action)
 
 const State = Record({
 	edges: new Set(),
@@ -143,11 +162,7 @@ const initialState = new State({
 })
 
 const Network = () => {
-	const [state, dispatch] = useImmutableReducer(reducer, initialState)
-
-	const possibleExpansionEdges = state.node.protrudes
-		.toSet()
-		.subtract(state.edges)
+	const [state, dispatch] = useImmutableReducer(movesReducer, initialState)
 
 	return (
 		<>
@@ -161,14 +176,10 @@ const Network = () => {
 				/>
 			))}
 
-			{possibleExpansionEdges.valueSeq().map(e => (
-				<Edge
-					key={`${e.u},${e.v},${e.s}`}
-					edge={e}
-					data-edge={JSON.stringify(e)}
-					colour='grey'
-					onClick={() => dispatch({ type: 'expand', edge: e })}
-				/>
+			{Object.keys(moves).map(type => (
+				<Fragment key={type}>
+					{moves[type].render(state, action => dispatch({ type, ...action }))}
+				</Fragment>
 			))}
 		</>
 	)
