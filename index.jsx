@@ -127,14 +127,17 @@ const Network = () => {
 	const [vertices, updateVertices] = useImmutableState(
 		Set.of(new TriangleGridVertex({ u: 0, v: 0 })),
 	)
+	const [edges, updateEdges] = useImmutableState(new Set())
 
-	const possibleEdges = vertices.flatMap(v => v.protrudes).toSet()
+	const possibleEdges = vertices
+		.flatMap(v => v.protrudes)
+		.toSet()
+		.subtract(edges)
 
 	const addVertexForEdge = edge => () => {
+		updateEdges(es => es.add(edge))
 		updateVertices(vs => edge.endpoints.forEach(v => vs.add(v)))
 	}
-
-	const inNetwork = edge => edge.endpoints.isSubset(vertices)
 
 	return (
 		<>
@@ -146,12 +149,20 @@ const Network = () => {
 				/>
 			))}
 
+			{edges.valueSeq().map(e => (
+				<Edge
+					key={`${e.u},${e.v},${e.s}`}
+					edge={e}
+					data-edge={JSON.stringify(e)}
+				/>
+			))}
+
 			{possibleEdges.valueSeq().map(e => (
 				<Edge
 					key={`${e.u},${e.v},${e.s}`}
 					edge={e}
 					data-edge={JSON.stringify(e)}
-					colour={inNetwork(e) ? 'black' : 'grey'}
+					colour='grey'
 					onClick={addVertexForEdge(e)}
 				/>
 			))}
