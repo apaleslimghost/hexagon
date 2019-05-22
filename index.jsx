@@ -66,7 +66,7 @@ const Vertex = styled.div`
 	left: calc(50vw + ${({ theme, vertex }) =>
 		theme.scale * vertex.x - theme.scale / 20}px);
 
-	&::after {
+	main.debug &::after {
 		content: "${({ vertex }) => `${vertex.u},${vertex.v}`}";
 		margin-left: 1em;
 	}
