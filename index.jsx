@@ -61,8 +61,10 @@ const Vertex = styled.div`
 	background: ${({ theme }) => theme.colour || 'black'};
 	border-radius: 100%;
 	position: absolute;
-	top: ${({ theme, vertex }) => theme.scale * vertex.y - theme.scale / 20}px;
-	left: ${({ theme, vertex }) => theme.scale * vertex.x - theme.scale / 20}px;
+	top: calc(50vh + ${({ theme, vertex }) =>
+		theme.scale * vertex.y - theme.scale / 20}px);
+	left: calc(50vw + ${({ theme, vertex }) =>
+		theme.scale * vertex.x - theme.scale / 20}px);
 
 	&::after {
 		content: "${({ vertex }) => `${vertex.u},${vertex.v}`}";
@@ -75,13 +77,15 @@ const Edge = styled.div`
 	height: ${({ theme }) => theme.scale / 20}px;
 	background: ${({ theme }) => theme.colour || 'black'};
 	position: absolute;
-	top: ${({ theme, edge }) => theme.scale * edge.y - theme.scale / 40}px;
-	left: ${({ theme, edge }) => theme.scale * edge.x}px;
+	top: calc(
+		50vh + ${({ theme, edge }) => theme.scale * edge.y - theme.scale / 40}px
+	);
+	left: calc(50vw + ${({ theme, edge }) => theme.scale * edge.x}px);
 	transform-origin: left center;
 	transform: rotate(${({ edge }) => edge.angle}deg);
 `
 
-const v = new TriangleGridVertex({ u: 1, v: 2 })
+const v = new TriangleGridVertex()
 
 render(
 	<ThemeProvider theme={{ scale: 100 }}>
