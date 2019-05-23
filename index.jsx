@@ -64,14 +64,7 @@ class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
 	}
 
 	get adjacent() {
-		return Set.of(
-			new TriangleGridVertex({ u: this.u, v: this.v + 1 }),
-			new TriangleGridVertex({ u: this.u + 1, v: this.v }),
-			new TriangleGridVertex({ u: this.u + 1, v: this.v - 1 }),
-			new TriangleGridVertex({ u: this.u, v: this.v - 1 }),
-			new TriangleGridVertex({ u: this.u - 1, v: this.v }),
-			new TriangleGridVertex({ u: this.u - 1, v: this.v + 1 }),
-		)
+		return this.protrudes.map(edge => edge.endpoints).remove(this)
 	}
 
 	accessibleVerticesVia(edges, traversed = new Set()) {
