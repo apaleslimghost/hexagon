@@ -73,12 +73,36 @@ class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
 			new TriangleGridVertex({ u: this.u - 1, v: this.v + 1 }),
 		)
 	}
+
+	accessibleVerticesVia(edges, traversed = new Set()) {
+		const accessibleEdges = this.protrudes.intersect(edges).subtract(traversed)
+		console.log(
+			accessibleEdges.flatMap(edge => edge.endpoints.remove(this)).toJS(),
+		)
+		if (accessibleEdges.size === 0) {
+			return new Set()
+		}
+
+		return accessibleEdges
+			.flatMap(edge =>
+				edge.endpoints
+					.remove(this)
+					.concat(
+						edge.endpoints
+							.remove(this)
+							.flatMap(node =>
+								node.accessibleVerticesVia(edges, traversed.add(edge)),
+							),
+					),
+			)
+			.toSet()
+	}
 }
 
 const Vertex = styled.div`
 	width: ${({ theme }) => theme.scale / 10}px;
 	height: ${({ theme }) => theme.scale / 10}px;
-	background: ${({ theme }) => theme.colour || 'black'};
+	background: ${({ theme, colour }) => colour || theme.colour || 'black'};
 	border-radius: 100%;
 	position: absolute;
 	top: calc(50vh + ${({ theme, vertex }) =>
@@ -87,6 +111,10 @@ const Vertex = styled.div`
 		theme.scale * vertex.x - theme.scale / 20}px);
 
 	z-index: 1;
+
+	&:hover {
+		background: blue;
+	}
 
 	main.debug &::after {
 		content: "${({ vertex }) => `${vertex.u},${vertex.v}`}";
@@ -146,6 +174,27 @@ const moves = {
 			)
 		},
 		reduce: (state, action) => state.update('edges', e => e.add(action.edge)),
+	},
+
+	move: {
+		render: (state, dispatch) => {
+			const possibleMoveVertices = state.node.accessibleVerticesVia(state.edges)
+
+			return (
+				<>
+					{possibleMoveVertices.valueSeq().map(v => (
+						<Vertex
+							key={`${v.u},${v.v}`}
+							vertex={v}
+							data-vertex={JSON.stringify(v)}
+							colour='grey'
+							onClick={() => dispatch({ node: v })}
+						/>
+					))}
+				</>
+			)
+		},
+		reduce: (state, action) => state.set('node', action.node),
 	},
 }
 
