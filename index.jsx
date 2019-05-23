@@ -67,7 +67,7 @@ class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
 		return this.protrudes.flatMap(edge => edge.endpoints).remove(this)
 	}
 
-	accessibleVerticesVia(edges, traversed = new Set()) {
+	accessibleVerticesVia(edges, notVia, traversed = new Set()) {
 		const accessibleEdges = this.protrudes.intersect(edges).subtract(traversed)
 
 		if (accessibleEdges.size === 0) {
@@ -78,11 +78,13 @@ class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
 			.flatMap(edge =>
 				edge.endpoints
 					.remove(this)
+					.remove(notVia)
 					.concat(
 						edge.endpoints
 							.remove(this)
+							.remove(notVia)
 							.flatMap(node =>
-								node.accessibleVerticesVia(edges, traversed.add(edge)),
+								node.accessibleVerticesVia(edges, notVia, traversed.add(edge)),
 							),
 					),
 			)
@@ -173,7 +175,10 @@ const moves = {
 
 	move: {
 		render: (state, dispatch) => {
-			const possibleMoveVertices = state.node.accessibleVerticesVia(state.edges)
+			const possibleMoveVertices = state.node.accessibleVerticesVia(
+				state.edges,
+				state.fakeOtherPlayer,
+			)
 
 			return (
 				<>
@@ -215,11 +220,13 @@ const movesReducer = (state, action) => moves[action.type].reduce(state, action)
 const State = Record({
 	edges: new Set(),
 	node: new TriangleGridVertex(),
+	fakeOtherPlayer: new TriangleGridVertex(),
 })
 
 const initialState = new State({
 	edges: Set.of(new TriangleGridEdge({ u: 0, v: 0, s: 'S' })),
 	node: new TriangleGridVertex({ u: 0, v: 0 }),
+	fakeOtherPlayer: new TriangleGridVertex({ u: 1, v: 0 }),
 })
 
 const Network = () => {
@@ -228,6 +235,10 @@ const Network = () => {
 	return (
 		<>
 			<Vertex vertex={state.node} theme={{ scale: 100, colour: 'red' }} />
+			<Vertex
+				vertex={state.fakeOtherPlayer}
+				theme={{ scale: 100, colour: 'gold' }}
+			/>
 
 			{Object.keys(moves).map(type => (
 				<Fragment key={type}>
