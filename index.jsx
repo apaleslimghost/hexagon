@@ -99,7 +99,10 @@ const Vertex = styled.div`
 	top: calc(50vh + ${({ theme, vertex }) =>
 		theme.scale * vertex.y - theme.scale / 20}px);
 	left: calc(50vw + ${({ theme, vertex }) =>
-		theme.scale * vertex.x - theme.scale / 20}px);
+		theme.scale * vertex.x -
+		theme.scale / 20 -
+		theme.scale / 2 +
+		theme.scale / 40}px);
 
 	z-index: 1;
 
@@ -121,7 +124,8 @@ const Edge = styled.div`
 	top: calc(
 		50vh + ${({ theme, edge }) => theme.scale * edge.y - theme.scale / 40}px
 	);
-	left: calc(50vw + ${({ theme, edge }) => theme.scale * edge.x}px);
+	left: calc(50vw + ${({ theme, edge }) =>
+		theme.scale * edge.x - theme.scale / 2 + theme.scale / 40}px);
 	transform-origin: left center;
 	transform: rotate(${({ edge }) => edge.angle}deg);
 
