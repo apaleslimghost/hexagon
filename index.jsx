@@ -64,7 +64,7 @@ class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
 	}
 
 	get adjacent() {
-		return this.protrudes.map(edge => edge.endpoints).remove(this)
+		return this.protrudes.flatMap(edge => edge.endpoints).remove(this)
 	}
 
 	accessibleVerticesVia(edges, traversed = new Set()) {
