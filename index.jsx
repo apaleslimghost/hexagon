@@ -76,9 +76,7 @@ class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
 
 	accessibleVerticesVia(edges, traversed = new Set()) {
 		const accessibleEdges = this.protrudes.intersect(edges).subtract(traversed)
-		console.log(
-			accessibleEdges.flatMap(edge => edge.endpoints.remove(this)).toJS(),
-		)
+
 		if (accessibleEdges.size === 0) {
 			return new Set()
 		}
@@ -196,6 +194,23 @@ const moves = {
 		},
 		reduce: (state, action) => state.set('node', action.node),
 	},
+
+	resupply: {
+		render: (state, dispatch) => (
+			<>
+				{state.edges.valueSeq().map(e => (
+					<Edge
+						key={`${e.u},${e.v},${e.s}`}
+						edge={e}
+						data-edge={JSON.stringify(e)}
+						onClick={() => dispatch({ edge: e })}
+					/>
+				))}
+			</>
+		),
+		reduce: (state, action) =>
+			state.update('edges', e => e.remove(action.edge)),
+	},
 }
 
 const movesReducer = (state, action) => moves[action.type].reduce(state, action)
@@ -216,14 +231,6 @@ const Network = () => {
 	return (
 		<>
 			<Vertex vertex={state.node} theme={{ scale: 100, colour: 'red' }} />
-
-			{state.edges.valueSeq().map(e => (
-				<Edge
-					key={`${e.u},${e.v},${e.s}`}
-					edge={e}
-					data-edge={JSON.stringify(e)}
-				/>
-			))}
 
 			{Object.keys(moves).map(type => (
 				<Fragment key={type}>
