@@ -1,9 +1,9 @@
 import React, { useReducer, Fragment } from 'react'
 import { render } from 'react-dom'
 import styled, { ThemeProvider } from 'styled-components'
-import { Record, Set, List, fromJS } from 'immutable'
+import { Record, Set, List, fromJS, Range, is } from 'immutable'
 
-class TriangleGridEdge extends Record({ u: 0, v: 0, s: 'W' }) {
+class TriangleGridEdge extends Record({ u: 0, v: 0, s: 'W', player: null }) {
 	get x() {
 		return this.s === 'E' ? this.u + 0.5 * (this.v + 1) : this.u + 0.5 * this.v
 	}
@@ -43,7 +43,7 @@ class TriangleGridEdge extends Record({ u: 0, v: 0, s: 'W' }) {
 
 const ROOT3_2 = Math.sin(Math.PI / 3)
 
-class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
+class TriangleGridVertex extends Record({ u: 0, v: 0, player: null }) {
 	get x() {
 		return this.u + 0.5 * this.v
 	}
@@ -118,10 +118,14 @@ const Vertex = styled.div`
 	}
 `
 
-const Edge = styled.div`
+const Matchstick = styled.div`
 	width: ${({ theme }) => theme.scale}px;
 	height: ${({ theme }) => theme.scale / 20}px;
 	background: ${({ theme, colour }) => colour || theme.colour || 'black'};
+	margin-bottom: ${({ theme }) => theme.scale / 40}px;
+`
+
+const Edge = styled(Matchstick)`
 	position: absolute;
 	top: calc(
 		50vh + ${({ theme, edge }) => theme.scale * edge.y - theme.scale / 40}px
@@ -152,9 +156,10 @@ const useImmutableReducer = (reducer, initialState) =>
 const moves = {
 	expand: {
 		render: (state, dispatch) => {
-			const possibleExpansionEdges = state.node.protrudes
-				.toSet()
-				.subtract(state.edges)
+			const possibleExpansionEdges =
+				state.getIn(['players', 0, 'matchsticks']) > 0
+					? state.node.protrudes.toSet().subtract(state.edges)
+					: new Set()
 
 			return (
 				<>
@@ -170,7 +175,12 @@ const moves = {
 				</>
 			)
 		},
-		reduce: (state, action) => state.update('edges', e => e.add(action.edge)),
+		reduce: (state, action) =>
+			state.getIn(['players', 0, 'matchsticks']) > 0
+				? state
+						.update('edges', e => e.add(action.edge))
+						.updateIn(['players', 0, 'matchsticks'], m => m - 1)
+				: state,
 	},
 
 	move: {
@@ -211,22 +221,33 @@ const moves = {
 			</>
 		),
 		reduce: (state, action) =>
-			state.update('edges', e => e.remove(action.edge)),
+			state
+				.update('edges', e => e.remove(action.edge))
+				.updateIn(['players', 0, 'matchsticks'], m => m + 1),
 	},
+}
+
+const nextTurn = state => {
+	state.update('players', players => players.push(players.shift()))
 }
 
 const movesReducer = (state, action) => moves[action.type].reduce(state, action)
 
+const Player = Record({
+	name: '',
+	matchsticks: 20,
+})
+
 const State = Record({
+	players: new List(),
 	edges: new Set(),
 	node: new TriangleGridVertex(),
-	fakeOtherPlayer: new TriangleGridVertex(),
 })
 
 const initialState = new State({
+	players: List.of(new Player({ name: 'Bren' }), new Player({ name: 'Piers' })),
 	edges: Set.of(new TriangleGridEdge({ u: 0, v: 0, s: 'S' })),
 	node: new TriangleGridVertex({ u: 0, v: 0 }),
-	fakeOtherPlayer: new TriangleGridVertex({ u: 1, v: 0 }),
 })
 
 const Network = () => {
@@ -234,11 +255,16 @@ const Network = () => {
 
 	return (
 		<>
+			{state.players.map(player => (
+				<div key={player.name}>
+					{player.name}{' '}
+					{Range(0, player.matchsticks).map(i => (
+						<Matchstick key={i} />
+					))}
+				</div>
+			))}
+
 			<Vertex vertex={state.node} theme={{ scale: 100, colour: 'red' }} />
-			<Vertex
-				vertex={state.fakeOtherPlayer}
-				theme={{ scale: 100, colour: 'gold' }}
-			/>
 
 			{Object.keys(moves).map(type => (
 				<Fragment key={type}>
