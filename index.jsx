@@ -95,15 +95,13 @@ const Vertex = styled.div`
 	width: ${({ theme }) => theme.scale / 10}px;
 	height: ${({ theme }) => theme.scale / 10}px;
 	background: ${({ theme, colour }) => colour || theme.colour || 'black'};
+	border: ${({ theme }) => theme.scale / 40}px solid rgba(0, 0, 0, 0.2);
 	border-radius: 100%;
 	position: absolute;
 	top: calc(50vh + ${({ theme, vertex }) =>
-		theme.scale * vertex.y - theme.scale / 20}px);
+		theme.scale * vertex.y - theme.scale / 14}px);
 	left: calc(50vw + ${({ theme, vertex }) =>
-		theme.scale * vertex.x -
-		theme.scale / 20 -
-		theme.scale / 2 +
-		theme.scale / 40}px);
+		theme.scale * vertex.x - theme.scale / 20 - theme.scale / 2}px);
 
 	z-index: 1;
 
@@ -318,7 +316,7 @@ const State = Record({
 
 const bren = new Player({
 	name: 'Bren',
-	colour: 'blue',
+	colour: 'dodgerblue',
 	node: new TriangleGridVertex({ u: 0, v: 0 }),
 })
 
@@ -358,7 +356,7 @@ const Board = () => {
 					<Vertex
 						key={`${player.name}-node`}
 						vertex={player.node}
-						theme={{ scale: 100, colour: 'red' }}
+						theme={{ scale: 100, colour: player.colour }}
 					/>
 
 					{moves.entrySeq().map(([type, move]) => (
