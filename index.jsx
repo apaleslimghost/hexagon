@@ -161,8 +161,7 @@ const moves = fromJS({
 				state.getIn(['players', state.currentPlayer, 'matchsticks']) > 0
 					? state.players
 							.get(state.currentPlayer)
-							.node.protrudes.toSet()
-							.subtract(state.edges)
+							.node.protrudes.subtract(state.edges)
 							.subtract(state.players.flatMap(player => player.edges))
 					: new Set()
 
@@ -236,8 +235,60 @@ const moves = fromJS({
 				)
 				.updateIn(['players', state.currentPlayer, 'matchsticks'], m => m + 1),
 	}),
-				.update('edges', e => e.remove(action.edge))
-				.updateIn(['players', state.currentPlayer, 'matchsticks'], m => m + 1),
+
+	assault: new Move({
+		render: ({ state, dispatch, player }) => {
+			const otherPlayer = state.players.delete(state.currentPlayer).first()
+
+			const possibleAssaultEdges =
+				state.getIn(['players', state.currentPlayer, 'matchsticks']) > 0
+					? state.players
+							.get(state.currentPlayer)
+							.node.protrudes.intersect(otherPlayer.edges.concat(state.edges))
+							.subtract(otherPlayer.node.protrudes)
+					: new Set()
+
+			return possibleAssaultEdges
+				.valueSeq()
+				.map(e => (
+					<Edge
+						key={`${e.u},${e.v},${e.s}`}
+						edge={e}
+						data-edge={JSON.stringify(e)}
+						colour='brickred'
+						onClick={() => dispatch({ edge: e })}
+					/>
+				))
+		},
+
+		reduce: (state, action) => {
+			const otherPlayer = state.players.delete(state.currentPlayer).first()
+			const otherPlayerIndex = state.players.indexOf(otherPlayer)
+			const movementNode = action.edge.endpoints
+				.remove(state.getIn(['players', state.currentPlayer, 'node']))
+				.first()
+
+			if (otherPlayer.edges.has(action.edge)) {
+				return state
+					.updateIn(['players', otherPlayerIndex, 'matchsticks'], m => m + 1)
+					.updateIn(['players', state.currentPlayer, 'matchsticks'], m => m - 1)
+					.updateIn(['players', otherPlayerIndex, 'edges'], e =>
+						e.remove(action.edge),
+					)
+					.updateIn(['players', state.currentPlayer, 'edges'], e =>
+						e.add(action.edge),
+					)
+					.setIn(['players', state.currentPlayer, 'node'], movementNode)
+			} else if (state.edges.has(action.edge)) {
+				return state
+					.updateIn(['players', state.currentPlayer, 'matchsticks'], m => m - 1)
+					.update('edges', e => e.remove(action.edge))
+					.updateIn(['players', state.currentPlayer, 'edges'], e =>
+						e.add(action.edge),
+					)
+					.setIn(['players', state.currentPlayer, 'node'], movementNode)
+			} else return state
+		},
 	}),
 })
 
