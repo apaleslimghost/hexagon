@@ -334,7 +334,7 @@ const initialState = new State({
 	currentPlayer: 0,
 })
 
-const Network = () => {
+const Board = () => {
 	const [state, dispatch] = useImmutableReducer(movesReducer, initialState)
 
 	return (
@@ -377,7 +377,7 @@ const Network = () => {
 
 render(
 	<ThemeProvider theme={{ scale: 100 }}>
-		<Network />
+		<Board />
 	</ThemeProvider>,
 	document.querySelector('main'),
 )
