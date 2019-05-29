@@ -68,26 +68,25 @@ class TriangleGridVertex extends Record({ u: 0, v: 0, player: null }) {
 	}
 
 	accessibleVerticesVia(edges, notVia, traversed = new Set()) {
-		const accessibleEdges = this.protrudes.intersect(edges).subtract(traversed)
+		const accessibleEdges = this.protrudes
+			.intersect(edges)
+			.subtract(traversed)
+			.subtract(notVia.protrudes)
 
 		if (accessibleEdges.size === 0) {
 			return new Set()
 		}
 
 		return accessibleEdges
-			.flatMap(edge =>
-				edge.endpoints
-					.remove(this)
-					.remove(notVia)
-					.concat(
-						edge.endpoints
-							.remove(this)
-							.remove(notVia)
-							.flatMap(node =>
-								node.accessibleVerticesVia(edges, notVia, traversed.add(edge)),
-							),
-					),
-			)
+			.flatMap(edge => {
+				const otherVertex = edge.endpoints.remove(this)
+
+				return otherVertex.concat(
+					otherVertex
+						.first()
+						.accessibleVerticesVia(edges, notVia, traversed.add(edge)),
+				)
+			})
 			.toSet()
 	}
 }
@@ -147,6 +146,8 @@ const Edge = styled(Matchstick)`
 
 const v = new TriangleGridVertex()
 
+// const updateWhere= (object, condition, updater) => object.update()
+
 const useImmutableReducer = (reducer, initialState) =>
 	useReducer(
 		(state, action) => state.update(draft => reducer(draft, action)),
@@ -157,8 +158,11 @@ const moves = {
 	expand: {
 		render: (state, dispatch) => {
 			const possibleExpansionEdges =
-				state.getIn(['players', 0, 'matchsticks']) > 0
-					? state.node.protrudes.toSet().subtract(state.edges)
+				state.getIn(['players', state.currentPlayer, 'matchsticks']) > 0
+					? state.players
+							.get(state.currentPlayer)
+							.node.protrudes.toSet()
+							.subtract(state.edges)
 					: new Set()
 
 			return (
@@ -176,19 +180,24 @@ const moves = {
 			)
 		},
 		reduce: (state, action) =>
-			state.getIn(['players', 0, 'matchsticks']) > 0
+			state.getIn(['players', state.currentPlayer, 'matchsticks']) > 0
 				? state
 						.update('edges', e => e.add(action.edge))
-						.updateIn(['players', 0, 'matchsticks'], m => m - 1)
+						.updateIn(
+							['players', state.currentPlayer, 'matchsticks'],
+							m => m - 1,
+						)
 				: state,
 	},
 
 	move: {
 		render: (state, dispatch) => {
-			const possibleMoveVertices = state.node.accessibleVerticesVia(
-				state.edges,
-				state.fakeOtherPlayer,
-			)
+			const possibleMoveVertices = state.players
+				.get(state.currentPlayer)
+				.node.accessibleVerticesVia(
+					state.edges,
+					state.players.delete(state.currentPlayer).first().node,
+				)
 
 			return (
 				<>
@@ -204,7 +213,8 @@ const moves = {
 				</>
 			)
 		},
-		reduce: (state, action) => state.set('node', action.node),
+		reduce: (state, action) =>
+			state.setIn(['players', state.currentPlayer, 'node'], action.node),
 	},
 
 	resupply: {
@@ -223,7 +233,7 @@ const moves = {
 		reduce: (state, action) =>
 			state
 				.update('edges', e => e.remove(action.edge))
-				.updateIn(['players', 0, 'matchsticks'], m => m + 1),
+				.updateIn(['players', state.currentPlayer, 'matchsticks'], m => m + 1),
 	},
 }
 
@@ -236,18 +246,30 @@ const movesReducer = (state, action) => moves[action.type].reduce(state, action)
 const Player = Record({
 	name: '',
 	matchsticks: 20,
+	node: new TriangleGridVertex(),
+	edges: new Set(),
 })
 
 const State = Record({
 	players: new List(),
 	edges: new Set(),
-	node: new TriangleGridVertex(),
+	currentPlayer: 0,
+})
+
+const bren = new Player({
+	name: 'Bren',
+	node: new TriangleGridVertex({ u: 0, v: 0 }),
+})
+
+const piers = new Player({
+	name: 'Piers',
+	node: new TriangleGridVertex({ u: 1, v: 0 }),
 })
 
 const initialState = new State({
-	players: List.of(new Player({ name: 'Bren' }), new Player({ name: 'Piers' })),
+	players: List.of(bren, piers),
 	edges: Set.of(new TriangleGridEdge({ u: 0, v: 0, s: 'S' })),
-	node: new TriangleGridVertex({ u: 0, v: 0 }),
+	currentPlayer: 0,
 })
 
 const Network = () => {
@@ -264,7 +286,13 @@ const Network = () => {
 				</div>
 			))}
 
-			<Vertex vertex={state.node} theme={{ scale: 100, colour: 'red' }} />
+			{state.players.valueSeq().map(player => (
+				<Vertex
+					key={player.name}
+					vertex={player.node}
+					theme={{ scale: 100, colour: 'red' }}
+				/>
+			))}
 
 			{Object.keys(moves).map(type => (
 				<Fragment key={type}>
