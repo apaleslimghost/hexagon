@@ -196,7 +196,7 @@ const moves = fromJS({
 			const possibleMoveVertices = state.players
 				.get(state.currentPlayer)
 				.node.accessibleVerticesVia(
-					state.edges,
+					state.getIn(['players', state.currentPlayer, 'edges']),
 					state.players.delete(state.currentPlayer).first().node,
 				)
 
@@ -231,6 +231,11 @@ const moves = fromJS({
 				)),
 		reduce: (state, action) =>
 			state
+				.update(['players', state.currentPlayer, 'edges'], e =>
+					e.remove(action.edge),
+				)
+				.updateIn(['players', state.currentPlayer, 'matchsticks'], m => m + 1),
+	}),
 				.update('edges', e => e.remove(action.edge))
 				.updateIn(['players', state.currentPlayer, 'matchsticks'], m => m + 1),
 	}),
