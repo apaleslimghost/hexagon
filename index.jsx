@@ -152,44 +152,47 @@ const useImmutableReducer = (reducer, initialState) =>
 		initialState,
 	)
 
-const moves = {
-	expand: {
-		render: (state, dispatch) => {
+const Move = Record({ render() {}, reduce() {} })
+
+const moves = fromJS({
+	expand: new Move({
+		render: ({ state, dispatch, player }) => {
 			const possibleExpansionEdges =
 				state.getIn(['players', state.currentPlayer, 'matchsticks']) > 0
 					? state.players
 							.get(state.currentPlayer)
 							.node.protrudes.toSet()
 							.subtract(state.edges)
+							.subtract(state.players.flatMap(player => player.edges))
 					: new Set()
 
-			return (
-				<>
-					{possibleExpansionEdges.valueSeq().map(e => (
-						<Edge
-							key={`${e.u},${e.v},${e.s}`}
-							edge={e}
-							data-edge={JSON.stringify(e)}
-							colour='grey'
-							onClick={() => dispatch({ edge: e })}
-						/>
-					))}
-				</>
-			)
+			return possibleExpansionEdges
+				.valueSeq()
+				.map(e => (
+					<Edge
+						key={`${e.u},${e.v},${e.s}`}
+						edge={e}
+						data-edge={JSON.stringify(e)}
+						colour='grey'
+						onClick={() => dispatch({ edge: e })}
+					/>
+				))
 		},
 		reduce: (state, action) =>
 			state.getIn(['players', state.currentPlayer, 'matchsticks']) > 0
 				? state
-						.update('edges', e => e.add(action.edge))
+						.updateIn(['players', state.currentPlayer, 'edges'], e =>
+							e.add(action.edge),
+						)
 						.updateIn(
 							['players', state.currentPlayer, 'matchsticks'],
 							m => m - 1,
 						)
 				: state,
-	},
+	}),
 
-	move: {
-		render: (state, dispatch) => {
+	move: new Move({
+		render: ({ state, dispatch }) => {
 			const possibleMoveVertices = state.players
 				.get(state.currentPlayer)
 				.node.accessibleVerticesVia(
@@ -197,50 +200,49 @@ const moves = {
 					state.players.delete(state.currentPlayer).first().node,
 				)
 
-			return (
-				<>
-					{possibleMoveVertices.valueSeq().map(v => (
-						<Vertex
-							key={`${v.u},${v.v}`}
-							vertex={v}
-							data-vertex={JSON.stringify(v)}
-							colour='grey'
-							onClick={() => dispatch({ node: v })}
-						/>
-					))}
-				</>
-			)
+			return possibleMoveVertices
+				.valueSeq()
+				.map(v => (
+					<Vertex
+						key={`${v.u},${v.v}`}
+						vertex={v}
+						data-vertex={JSON.stringify(v)}
+						colour='grey'
+						onClick={() => dispatch({ node: v })}
+					/>
+				))
 		},
 		reduce: (state, action) =>
 			state.setIn(['players', state.currentPlayer, 'node'], action.node),
-	},
+	}),
 
-	resupply: {
-		render: (state, dispatch) => (
-			<>
-				{state.edges.valueSeq().map(e => (
+	resupply: new Move({
+		render: ({ state, dispatch, player }) =>
+			player.edges
+				.valueSeq()
+				.map(e => (
 					<Edge
 						key={`${e.u},${e.v},${e.s}`}
 						edge={e}
+						colour={player.colour}
 						data-edge={JSON.stringify(e)}
 						onClick={() => dispatch({ edge: e })}
 					/>
-				))}
-			</>
-		),
+				)),
 		reduce: (state, action) =>
 			state
 				.update('edges', e => e.remove(action.edge))
 				.updateIn(['players', state.currentPlayer, 'matchsticks'], m => m + 1),
-	},
-}
+	}),
+})
 
 const nextTurn = state => {
 	state.update('players', players => players.push(players.shift()))
 }
 
 const movesReducer = (state, action) =>
-	moves[action.type]
+	moves
+		.get(action.type)
 		.reduce(state, action)
 		.update('currentPlayer', c => (c + 1) % 2)
 
@@ -249,6 +251,7 @@ const Player = Record({
 	matchsticks: 20,
 	node: new TriangleGridVertex(),
 	edges: new Set(),
+	colour: '',
 })
 
 const State = Record({
@@ -259,11 +262,13 @@ const State = Record({
 
 const bren = new Player({
 	name: 'Bren',
+	colour: 'blue',
 	node: new TriangleGridVertex({ u: 0, v: 0 }),
 })
 
 const piers = new Player({
 	name: 'Piers',
+	colour: 'gold',
 	node: new TriangleGridVertex({ u: 1, v: 0 }),
 })
 
@@ -278,26 +283,36 @@ const Network = () => {
 
 	return (
 		<>
+			{state.edges.valueSeq().map(e => (
+				<Edge key={`${e.u},${e.v},${e.s}`} edge={e} colour='red' />
+			))}
 			{state.players.map((player, index) => (
-				<div key={player.name}>
-					{state.currentPlayer === index ? <em>{player.name}</em> : player.name}
-					{Range(0, player.matchsticks).map(i => (
-						<Matchstick key={i} />
+				<Fragment key={player.name}>
+					<div key={`${player.name}-info`}>
+						{state.currentPlayer === index ? (
+							<em>{player.name}</em>
+						) : (
+							player.name
+						)}
+						{Range(0, player.matchsticks).map(i => (
+							<Matchstick colour={player.colour} key={i} />
+						))}
+					</div>
+
+					<Vertex
+						key={`${player.name}-node`}
+						vertex={player.node}
+						theme={{ scale: 100, colour: 'red' }}
+					/>
+
+					{moves.entrySeq().map(([type, move]) => (
+						<move.render
+							key={type}
+							state={state}
+							player={player}
+							dispatch={action => dispatch({ type, ...action })}
+						/>
 					))}
-				</div>
-			))}
-
-			{state.players.valueSeq().map(player => (
-				<Vertex
-					key={player.name}
-					vertex={player.node}
-					theme={{ scale: 100, colour: 'red' }}
-				/>
-			))}
-
-			{Object.keys(moves).map(type => (
-				<Fragment key={type}>
-					{moves[type].render(state, action => dispatch({ type, ...action }))}
 				</Fragment>
 			))}
 		</>
