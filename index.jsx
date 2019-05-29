@@ -146,8 +146,6 @@ const Edge = styled(Matchstick)`
 
 const v = new TriangleGridVertex()
 
-// const updateWhere= (object, condition, updater) => object.update()
-
 const useImmutableReducer = (reducer, initialState) =>
 	useReducer(
 		(state, action) => state.update(draft => reducer(draft, action)),
@@ -241,7 +239,10 @@ const nextTurn = state => {
 	state.update('players', players => players.push(players.shift()))
 }
 
-const movesReducer = (state, action) => moves[action.type].reduce(state, action)
+const movesReducer = (state, action) =>
+	moves[action.type]
+		.reduce(state, action)
+		.update('currentPlayer', c => (c + 1) % 2)
 
 const Player = Record({
 	name: '',
@@ -277,9 +278,9 @@ const Network = () => {
 
 	return (
 		<>
-			{state.players.map(player => (
+			{state.players.map((player, index) => (
 				<div key={player.name}>
-					{player.name}{' '}
+					{state.currentPlayer === index ? <em>{player.name}</em> : player.name}
 					{Range(0, player.matchsticks).map(i => (
 						<Matchstick key={i} />
 					))}
