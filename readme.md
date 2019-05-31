@@ -12,7 +12,7 @@ npm start
 ## todo
 
 - [x] win condition
-- [ ] initial player setup
+- [x] initial player setup
 - [ ] design
 - [ ] touchscreens
 - [ ] tutorial

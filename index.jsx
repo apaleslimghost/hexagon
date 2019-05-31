@@ -298,6 +298,35 @@ const moves = fromJS({
 			} else return state
 		},
 	}),
+
+	initPlayer: new Move({
+		render: ({ state, dispatch, player, playerIndex, disabled }) => (
+			<div>
+				{player.name ? (
+					state.currentPlayer === playerIndex ? (
+						<em>{player.name}</em>
+					) : (
+						player.name
+					)
+				) : (
+					<input
+						onBlur={ev =>
+							dispatch({
+								playerIndex,
+								name: ev.target.value,
+							})
+						}
+					/>
+				)}
+				{!disabled &&
+					Range(0, player.matchsticks).map(i => (
+						<Matchstick colour={player.colour} key={i} />
+					))}
+			</div>
+		),
+		reduce: (state, action) =>
+			state.setIn(['players', action.playerIndex, 'name'], action.name),
+	}),
 })
 
 const movesReducer = (state, action) =>
@@ -321,20 +350,17 @@ const State = Record({
 	winner: null,
 })
 
-const bren = new Player({
-	name: 'Bren',
-	colour: 'dodgerblue',
-	node: new TriangleGridVertex({ u: 0, v: 0 }),
-})
-
-const piers = new Player({
-	name: 'Piers',
-	colour: 'gold',
-	node: new TriangleGridVertex({ u: 1, v: 0 }),
-})
-
 const initialState = new State({
-	players: List.of(bren, piers),
+	players: List.of(
+		new Player({
+			colour: 'dodgerblue',
+			node: new TriangleGridVertex({ u: 0, v: 0 }),
+		}),
+		new Player({
+			colour: 'gold',
+			node: new TriangleGridVertex({ u: 1, v: 0 }),
+		}),
+	),
 	edges: Set.of(new TriangleGridEdge({ u: 0, v: 0, s: 'S' })),
 	currentPlayer: 0,
 })
@@ -374,18 +400,7 @@ const Board = () => {
 			))}
 			{winner && <h1>{winner.name} wins!</h1>}
 			{state.players.map((player, index) => (
-				<Fragment key={player.name}>
-					<div key={`${player.name}-info`}>
-						{state.currentPlayer === index ? (
-							<em>{player.name}</em>
-						) : (
-							player.name
-						)}
-						{Range(0, player.matchsticks).map(i => (
-							<Matchstick colour={player.colour} key={i} />
-						))}
-					</div>
-
+				<Fragment key={index}>
 					<Vertex
 						key={`${player.name}-node`}
 						vertex={player.node}
@@ -397,8 +412,9 @@ const Board = () => {
 							key={type}
 							state={state}
 							player={player}
+							playerIndex={index}
 							dispatch={action => dispatch({ type, ...action })}
-							disabled={winner}
+							disabled={state.players.some(player => !player.name) || winner}
 						/>
 					))}
 				</Fragment>
