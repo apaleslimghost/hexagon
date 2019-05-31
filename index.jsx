@@ -304,7 +304,7 @@ const moves = fromJS({
 			<div>
 				{player.name ? (
 					state.currentPlayer === playerIndex ? (
-						<em>{player.name}</em>
+						<strong>☞ {player.name}</strong>
 					) : (
 						player.name
 					)
@@ -326,6 +326,16 @@ const moves = fromJS({
 		),
 		reduce: (state, action) =>
 			state.setIn(['players', action.playerIndex, 'name'], action.name),
+	}),
+
+	renderNode: new Move({
+		render: ({ player }) => (
+			<Vertex
+				key={`${player.name}-node`}
+				vertex={player.node}
+				theme={{ scale: 100, colour: player.colour }}
+			/>
+		),
 	}),
 })
 
@@ -399,15 +409,10 @@ const Board = () => {
 				<Edge key={`${e.u},${e.v},${e.s}`} edge={e} colour='red' />
 			))}
 			{winner && <h1>{winner.name} wins!</h1>}
-			{state.players.map((player, index) => (
-				<Fragment key={index}>
-					<Vertex
-						key={`${player.name}-node`}
-						vertex={player.node}
-						theme={{ scale: 100, colour: player.colour }}
-					/>
-
-					{moves.entrySeq().map(([type, move]) => (
+			{state.players.map((player, index) =>
+				moves
+					.entrySeq()
+					.map(([type, move]) => (
 						<move.render
 							key={type}
 							state={state}
@@ -416,9 +421,8 @@ const Board = () => {
 							dispatch={action => dispatch({ type, ...action })}
 							disabled={state.players.some(player => !player.name) || winner}
 						/>
-					))}
-				</Fragment>
-			))}
+					)),
+			)}
 		</>
 	)
 }
