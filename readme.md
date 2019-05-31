@@ -11,7 +11,9 @@ npm start
 
 ## todo
 
-- [ ] win condition
+- [x] win condition
 - [ ] initial player setup
 - [ ] design
+- [ ] touchscreens
+- [ ] tutorial
 - [ ] online???

@@ -1,4 +1,4 @@
-import React, { useReducer, Fragment } from 'react'
+import React, { useReducer, Fragment, useState } from 'react'
 import { render } from 'react-dom'
 import styled, { ThemeProvider } from 'styled-components'
 import { Record, Set, List, fromJS, Range, is } from 'immutable'
@@ -154,7 +154,9 @@ const Move = Record({ render() {}, reduce() {} })
 
 const moves = fromJS({
 	expand: new Move({
-		render: ({ state, dispatch, player }) => {
+		render: ({ state, dispatch, player, disabled }) => {
+			if (disabled) return null
+
 			const possibleExpansionEdges =
 				state.getIn(['players', state.currentPlayer, 'matchsticks']) > 0
 					? state.players
@@ -189,7 +191,9 @@ const moves = fromJS({
 	}),
 
 	move: new Move({
-		render: ({ state, dispatch }) => {
+		render: ({ state, dispatch, disabled }) => {
+			if (disabled) return null
+
 			const possibleMoveVertices = state.players
 				.get(state.currentPlayer)
 				.node.accessibleVerticesVia(
@@ -214,18 +218,23 @@ const moves = fromJS({
 	}),
 
 	resupply: new Move({
-		render: ({ state, dispatch, player }) =>
-			player.edges
+		render: ({ state, dispatch, player, disabled }) => {
+			const hexagons = findHexagons(player.edges)
+
+			return player.edges
 				.valueSeq()
 				.map(e => (
 					<Edge
 						key={`${e.u},${e.v},${e.s}`}
 						edge={e}
-						colour={player.colour}
+						colour={
+							hexagons.some(h => h.has(e)) ? 'rebeccapurple' : player.colour
+						}
 						data-edge={JSON.stringify(e)}
-						onClick={() => dispatch({ edge: e })}
+						onClick={disabled ? () => dispatch({ edge: e }) : undefined}
 					/>
-				)),
+				))
+		},
 		reduce: (state, action) =>
 			state
 				.update(['players', state.currentPlayer, 'edges'], e =>
@@ -235,7 +244,8 @@ const moves = fromJS({
 	}),
 
 	assault: new Move({
-		render: ({ state, dispatch, player }) => {
+		render: ({ state, dispatch, player, disabled }) => {
+			if (disabled) return null
 			const otherPlayer = state.players.delete(state.currentPlayer).first()
 
 			const possibleAssaultEdges =
@@ -290,10 +300,6 @@ const moves = fromJS({
 	}),
 })
 
-const nextTurn = state => {
-	state.update('players', players => players.push(players.shift()))
-}
-
 const movesReducer = (state, action) =>
 	moves
 		.get(action.type)
@@ -312,6 +318,7 @@ const State = Record({
 	players: new List(),
 	edges: new Set(),
 	currentPlayer: 0,
+	winner: null,
 })
 
 const bren = new Player({
@@ -332,14 +339,40 @@ const initialState = new State({
 	currentPlayer: 0,
 })
 
+const findHexagons = edges =>
+	edges
+		.filter(edge => edge.s === 'S')
+		.map(edge =>
+			Set.of(
+				edge,
+				new TriangleGridEdge({ u: edge.u + 1, v: edge.v - 1, s: 'E' }),
+				new TriangleGridEdge({ u: edge.u + 2, v: edge.v - 2, s: 'W' }),
+				new TriangleGridEdge({ u: edge.u + 1, v: edge.v - 2, s: 'S' }),
+				new TriangleGridEdge({ u: edge.u, v: edge.v - 2, s: 'E' }),
+				new TriangleGridEdge({ u: edge.u, v: edge.v - 1, s: 'W' }),
+			),
+		)
+		.filter(hexagon => hexagon.isSubset(edges))
+
 const Board = () => {
 	const [state, dispatch] = useImmutableReducer(movesReducer, initialState)
+	const [winner, setWinner] = useState(null)
+
+	if (!winner) {
+		const maybeWinner = state.players.find(
+			player => findHexagons(player.edges).size > 0,
+		)
+		if (maybeWinner) {
+			setWinner(maybeWinner)
+		}
+	}
 
 	return (
 		<>
 			{state.edges.valueSeq().map(e => (
 				<Edge key={`${e.u},${e.v},${e.s}`} edge={e} colour='red' />
 			))}
+			{winner && <h1>{winner.name} wins!</h1>}
 			{state.players.map((player, index) => (
 				<Fragment key={player.name}>
 					<div key={`${player.name}-info`}>
@@ -365,6 +398,7 @@ const Board = () => {
 							state={state}
 							player={player}
 							dispatch={action => dispatch({ type, ...action })}
+							disabled={winner}
 						/>
 					))}
 				</Fragment>
