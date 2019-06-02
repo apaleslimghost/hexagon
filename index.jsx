@@ -1,9 +1,19 @@
 import React, { useReducer, Fragment, useState } from 'react'
 import { render } from 'react-dom'
-import styled, { ThemeProvider } from 'styled-components'
+import styled, {
+	ThemeProvider,
+	createGlobalStyle,
+	css,
+} from 'styled-components'
 import { Record, Set, List, fromJS, Range, is } from 'immutable'
 
-class TriangleGridEdge extends Record({ u: 0, v: 0, s: 'W', player: null }) {
+const GlobalStyle = createGlobalStyle`
+body {
+	font-family: 'Josefin Sans', sans-serif;
+}
+`
+
+class TriangleGridEdge extends Record({ u: 0, v: 0, s: 'W' }) {
 	get x() {
 		return this.s === 'E' ? this.u + 0.5 * (this.v + 1) : this.u + 0.5 * this.v
 	}
@@ -43,7 +53,7 @@ class TriangleGridEdge extends Record({ u: 0, v: 0, s: 'W', player: null }) {
 
 const ROOT3_2 = Math.sin(Math.PI / 3)
 
-class TriangleGridVertex extends Record({ u: 0, v: 0, player: null }) {
+class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
 	get x() {
 		return this.u + 0.5 * this.v
 	}
@@ -103,11 +113,26 @@ const Vertex = styled.div`
 	left: calc(50vw + ${({ theme, vertex }) =>
 		theme.scale * vertex.x - theme.scale / 20 - theme.scale / 2}px);
 
-	z-index: 1;
+	z-index: 2;
 
-	&:hover {
-		background: blue;
-	}
+	${({ onClick }) =>
+		onClick &&
+		css`
+			&::after {
+				content: '';
+				position: absolute;
+				top: -10px;
+				bottom: -10px;
+				left: -10px;
+				right: -10px;
+				border-radius: 100%;
+				z-index: 0;
+			}
+
+			&:hover {
+				background: blue;
+			}
+		`}
 
 	main.debug &::after {
 		content: "${({ vertex }) => `${vertex.u},${vertex.v}`}";
@@ -132,9 +157,26 @@ const Edge = styled(Matchstick)`
 	transform-origin: left center;
 	transform: rotate(${({ edge }) => edge.angle}deg);
 
-	&:hover {
-		background: blue;
-	}
+	z-index: 1;
+
+	${({ onClick }) =>
+		onClick &&
+		css`
+			&::after {
+				content: '';
+				position: absolute;
+				top: -10px;
+				bottom: -10px;
+				left: 0;
+				right: 0;
+				border-radius: 100%;
+				z-index: 0;
+			}
+
+			&:hover {
+				background: blue;
+			}
+		`}
 
 	main.debug &::after {
 		content: "${({ edge }) => `${edge.u},${edge.v} ${edge.s}`}";
@@ -429,7 +471,10 @@ const Board = () => {
 
 render(
 	<ThemeProvider theme={{ scale: 100 }}>
-		<Board />
+		<>
+			<GlobalStyle />
+			<Board />
+		</>
 	</ThemeProvider>,
 	document.querySelector('main'),
 )
