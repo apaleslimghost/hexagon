@@ -6,6 +6,7 @@ import styled, {
 	css,
 } from 'styled-components'
 import { Record, Set, List, fromJS, Range, is } from 'immutable'
+import { darken } from 'polished'
 
 const GlobalStyle = createGlobalStyle`
 body {
@@ -98,14 +99,14 @@ class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
 				)
 			})
 			.toSet()
+			.remove(this)
 	}
 }
 
 const Vertex = styled.div`
-	width: ${({ theme }) => theme.scale / 10}px;
-	height: ${({ theme }) => theme.scale / 10}px;
+	width: ${({ theme }) => theme.scale / 8}px;
+	height: ${({ theme }) => theme.scale / 8}px;
 	background: ${({ theme, colour }) => colour || theme.colour || 'black'};
-	border: ${({ theme }) => theme.scale / 40}px solid rgba(0, 0, 0, 0.2);
 	border-radius: 100%;
 	position: absolute;
 	top: calc(50vh + ${({ theme, vertex }) =>
@@ -182,6 +183,10 @@ const Edge = styled(Matchstick)`
 		content: "${({ edge }) => `${edge.u},${edge.v} ${edge.s}`}";
 		margin-left: 1em;
 	}
+`
+
+const Input = styled.input`
+	font: inherit;
 `
 
 const v = new TriangleGridVertex()
@@ -351,7 +356,8 @@ const moves = fromJS({
 						player.name
 					)
 				) : (
-					<input
+					<Input
+						placeholder={`Player ${playerIndex + 1}`}
 						onBlur={ev =>
 							dispatch({
 								playerIndex,
