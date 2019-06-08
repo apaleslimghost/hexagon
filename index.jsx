@@ -209,7 +209,7 @@ const Move = Record({ render() {}, reduce() {} })
 
 const Pan = createContext({
 	as: animated.div,
-	style: { transform: 'translate3d(0, 0, 0)' },
+	style: {},
 })
 
 const moves = fromJS({
@@ -400,7 +400,6 @@ const moves = fromJS({
 	renderNode: new Move({
 		render: ({ player }) => {
 			const pan = useContext(Pan)
-			console.log(pan)
 
 			return (
 				<Vertex
@@ -493,18 +492,17 @@ const Board = () => {
 		}
 	}
 
+	const pan = {
+		style: {
+			transform: local.interpolate((x, y) => `translate3d(${x}px, ${y}px, 0)`),
+		},
+	}
+
 	return (
-		<Pan.Provider
-			value={{
-				as: animated.div,
-				style: {
-					transform: local.interpolate((x, y) => `translate3d(${x}, ${y}, 0)`),
-				},
-			}}
-		>
-			<ScrollPane {...bind()}>
+		<ScrollPane {...bind()}>
+			<Pan.Provider value={pan}>
 				{state.edges.valueSeq().map(e => (
-					<Edge key={`${e.u},${e.v},${e.s}`} edge={e} colour='red' />
+					<Edge key={`${e.u},${e.v},${e.s}`} edge={e} colour='red' {...pan} />
 				))}
 				{winner && <h1>{winner.name} wins!</h1>}
 				{state.players.map((player, index) =>
@@ -521,8 +519,8 @@ const Board = () => {
 							/>
 						)),
 				)}
-			</ScrollPane>
-		</Pan.Provider>
+			</Pan.Provider>
+		</ScrollPane>
 	)
 }
 
