@@ -7,6 +7,8 @@ import styled, {
 } from 'styled-components'
 import { Record, Set, List, fromJS, Range, is } from 'immutable'
 import { darken } from 'polished'
+import { useGesture } from 'react-use-gesture'
+import { animated, useSpring } from 'react-spring'
 
 const GlobalStyle = createGlobalStyle`
 body {
@@ -103,7 +105,7 @@ class TriangleGridVertex extends Record({ u: 0, v: 0 }) {
 	}
 }
 
-const Vertex = styled.div`
+const Vertex = styled(animated.div)`
 	width: ${({ theme }) => theme.scale / 8}px;
 	height: ${({ theme }) => theme.scale / 8}px;
 	background: ${({ theme, colour }) => colour || theme.colour || 'black'};
@@ -141,7 +143,7 @@ const Vertex = styled.div`
 	}
 `
 
-const Matchstick = styled.div`
+const Matchstick = styled(animated.div)`
 	width: ${({ theme }) => theme.scale}px;
 	height: ${({ theme }) => theme.scale / 20}px;
 	background: ${({ theme, colour }) => colour || theme.colour || 'black'};
@@ -438,9 +440,23 @@ const findHexagons = edges =>
 		)
 		.filter(hexagon => hexagon.isSubset(edges))
 
+const ScrollPane = styled.div`
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	left: 0;
+`
+
 const Board = () => {
 	const [state, dispatch] = useImmutableReducer(movesReducer, initialState)
 	const [winner, setWinner] = useState(null)
+	const [{ local }, set] = useSpring(() => ({ local: [0, 0] }))
+	const bind = useGesture({
+		onDrag({ local }) {
+			set({ local })
+		},
+	})
 
 	if (!winner) {
 		const maybeWinner = state.players.find(
@@ -452,7 +468,7 @@ const Board = () => {
 	}
 
 	return (
-		<>
+		<ScrollPane {...bind()}>
 			{state.edges.valueSeq().map(e => (
 				<Edge key={`${e.u},${e.v},${e.s}`} edge={e} colour='red' />
 			))}
@@ -471,7 +487,7 @@ const Board = () => {
 						/>
 					)),
 			)}
-		</>
+		</ScrollPane>
 	)
 }
 
