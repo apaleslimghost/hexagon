@@ -1,4 +1,10 @@
-import React, { useReducer, Fragment, useState } from 'react'
+import React, {
+	useReducer,
+	Fragment,
+	useState,
+	createContext,
+	useContext,
+} from 'react'
 import { render } from 'react-dom'
 import styled, {
 	ThemeProvider,
@@ -201,9 +207,15 @@ const useImmutableReducer = (reducer, initialState) =>
 
 const Move = Record({ render() {}, reduce() {} })
 
+const Pan = createContext({
+	as: animated.div,
+	style: { transform: 'translate3d(0, 0, 0)' },
+})
+
 const moves = fromJS({
 	expand: new Move({
 		render: ({ state, dispatch, player, disabled }) => {
+			const pan = useContext(Pan)
 			if (disabled) return null
 
 			const possibleExpansionEdges =
@@ -218,6 +230,7 @@ const moves = fromJS({
 				.valueSeq()
 				.map(e => (
 					<Edge
+						{...pan}
 						key={`${e.u},${e.v},${e.s}`}
 						edge={e}
 						data-edge={JSON.stringify(e)}
@@ -241,6 +254,7 @@ const moves = fromJS({
 
 	move: new Move({
 		render: ({ state, dispatch, disabled }) => {
+			const pan = useContext(Pan)
 			if (disabled) return null
 
 			const possibleMoveVertices = state.players
@@ -254,6 +268,7 @@ const moves = fromJS({
 				.valueSeq()
 				.map(v => (
 					<Vertex
+						{...pan}
 						key={`${v.u},${v.v}`}
 						vertex={v}
 						data-vertex={JSON.stringify(v)}
@@ -268,12 +283,14 @@ const moves = fromJS({
 
 	resupply: new Move({
 		render: ({ state, dispatch, player, disabled }) => {
+			const pan = useContext(Pan)
 			const hexagons = findHexagons(player.edges)
 
 			return player.edges
 				.valueSeq()
 				.map(e => (
 					<Edge
+						{...pan}
 						key={`${e.u},${e.v},${e.s}`}
 						edge={e}
 						colour={
@@ -294,6 +311,7 @@ const moves = fromJS({
 
 	assault: new Move({
 		render: ({ state, dispatch, player, disabled }) => {
+			const pan = useContext(Pan)
 			if (disabled) return null
 			const otherPlayer = state.players.delete(state.currentPlayer).first()
 
@@ -309,6 +327,7 @@ const moves = fromJS({
 				.valueSeq()
 				.map(e => (
 					<Edge
+						{...pan}
 						key={`${e.u},${e.v},${e.s}`}
 						edge={e}
 						data-edge={JSON.stringify(e)}
@@ -379,13 +398,19 @@ const moves = fromJS({
 	}),
 
 	renderNode: new Move({
-		render: ({ player }) => (
-			<Vertex
-				key={`${player.name}-node`}
-				vertex={player.node}
-				theme={{ scale: 100, colour: player.colour }}
-			/>
-		),
+		render: ({ player }) => {
+			const pan = useContext(Pan)
+			console.log(pan)
+
+			return (
+				<Vertex
+					{...pan}
+					key={`${player.name}-node`}
+					vertex={player.node}
+					theme={{ scale: 100, colour: player.colour }}
+				/>
+			)
+		},
 	}),
 })
 
@@ -446,6 +471,7 @@ const ScrollPane = styled.div`
 	bottom: 0;
 	right: 0;
 	left: 0;
+	overflow: hidden;
 `
 
 const Board = () => {
@@ -468,26 +494,35 @@ const Board = () => {
 	}
 
 	return (
-		<ScrollPane {...bind()}>
-			{state.edges.valueSeq().map(e => (
-				<Edge key={`${e.u},${e.v},${e.s}`} edge={e} colour='red' />
-			))}
-			{winner && <h1>{winner.name} wins!</h1>}
-			{state.players.map((player, index) =>
-				moves
-					.entrySeq()
-					.map(([type, move]) => (
-						<move.render
-							key={type}
-							state={state}
-							player={player}
-							playerIndex={index}
-							dispatch={action => dispatch({ type, ...action })}
-							disabled={state.players.some(player => !player.name) || winner}
-						/>
-					)),
-			)}
-		</ScrollPane>
+		<Pan.Provider
+			value={{
+				as: animated.div,
+				style: {
+					transform: local.interpolate((x, y) => `translate3d(${x}, ${y}, 0)`),
+				},
+			}}
+		>
+			<ScrollPane {...bind()}>
+				{state.edges.valueSeq().map(e => (
+					<Edge key={`${e.u},${e.v},${e.s}`} edge={e} colour='red' />
+				))}
+				{winner && <h1>{winner.name} wins!</h1>}
+				{state.players.map((player, index) =>
+					moves
+						.entrySeq()
+						.map(([type, move]) => (
+							<move.render
+								key={type}
+								state={state}
+								player={player}
+								playerIndex={index}
+								dispatch={action => dispatch({ type, ...action })}
+								disabled={state.players.some(player => !player.name) || winner}
+							/>
+						)),
+				)}
+			</ScrollPane>
+		</Pan.Provider>
 	)
 }
 
