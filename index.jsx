@@ -154,9 +154,11 @@ const Matchstick = styled(animated.div)`
 	height: ${({ theme }) => theme.scale / 20}px;
 	background: ${({ theme, colour }) => colour || theme.colour || 'black'};
 	margin-bottom: ${({ theme }) => theme.scale / 40}px;
+	transform-origin: left center;
+	transform: rotate(${({ rotate }) => rotate}deg);
 `
 
-const Edge = styled(Matchstick)`
+const _Edge = styled(animated.div)`
 	position: absolute;
 	top: calc(
 		50vh + ${({ theme, edge }) => theme.scale * edge.y - theme.scale / 40}px
@@ -164,14 +166,13 @@ const Edge = styled(Matchstick)`
 	left: calc(50vw + ${({ theme, edge }) =>
 		theme.scale * edge.x - theme.scale / 2 + theme.scale / 40}px);
 	transform-origin: left center;
-	transform: rotate(${({ edge }) => edge.angle}deg);
 
 	z-index: 1;
 
 	${({ onClick }) =>
 		onClick &&
 		css`
-			&::after {
+			${Matchstick}::after {
 				content: '';
 				position: absolute;
 				top: -10px;
@@ -182,7 +183,7 @@ const Edge = styled(Matchstick)`
 				z-index: 0;
 			}
 
-			&:hover {
+			${Matchstick}:hover {
 				background: blue;
 			}
 		`}
@@ -192,6 +193,12 @@ const Edge = styled(Matchstick)`
 		margin-left: 1em;
 	}
 `
+
+const Edge = props => (
+	<_Edge {...props}>
+		<Matchstick colour={props.colour} rotate={props.edge.angle} />
+	</_Edge>
+)
 
 const Input = styled.input`
 	font: inherit;
