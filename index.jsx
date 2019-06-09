@@ -154,11 +154,9 @@ const Matchstick = styled(animated.div)`
 	height: ${({ theme }) => theme.scale / 20}px;
 	background: ${({ theme, colour }) => colour || theme.colour || 'black'};
 	margin-bottom: ${({ theme }) => theme.scale / 40}px;
-	transform-origin: left center;
-	transform: rotate(${({ rotate }) => rotate}deg);
 `
 
-const _Edge = styled(animated.div)`
+const Edge = styled(Matchstick)`
 	position: absolute;
 	top: calc(
 		50vh + ${({ theme, edge }) => theme.scale * edge.y - theme.scale / 40}px
@@ -166,13 +164,14 @@ const _Edge = styled(animated.div)`
 	left: calc(50vw + ${({ theme, edge }) =>
 		theme.scale * edge.x - theme.scale / 2 + theme.scale / 40}px);
 	transform-origin: left center;
+	transform: rotate(${({ edge }) => edge.angle}deg);
 
 	z-index: 1;
 
 	${({ onClick }) =>
 		onClick &&
 		css`
-			${Matchstick}::after {
+			&::after {
 				content: '';
 				position: absolute;
 				top: -10px;
@@ -183,7 +182,7 @@ const _Edge = styled(animated.div)`
 				z-index: 0;
 			}
 
-			${Matchstick}:hover {
+			&:hover {
 				background: blue;
 			}
 		`}
@@ -193,12 +192,6 @@ const _Edge = styled(animated.div)`
 		margin-left: 1em;
 	}
 `
-
-const Edge = props => (
-	<_Edge {...props}>
-		<Matchstick colour={props.colour} rotate={props.edge.angle} />
-	</_Edge>
-)
 
 const Input = styled.input`
 	font: inherit;
@@ -214,15 +207,41 @@ const useImmutableReducer = (reducer, initialState) =>
 
 const Move = Record({ render() {}, reduce() {} })
 
-const Pan = createContext({
-	as: animated.div,
-	style: {},
+const hud = fromJS({
+	initPlayer: new Move({
+		render: ({ state, dispatch, player, playerIndex, disabled }) => (
+			<div>
+				{player.name ? (
+					state.currentPlayer === playerIndex ? (
+						<strong>☞ {player.name}</strong>
+					) : (
+						player.name
+					)
+				) : (
+					<Input
+						placeholder={`Player ${playerIndex + 1}`}
+						onBlur={ev =>
+							dispatch({
+								playerIndex,
+								name: ev.target.value,
+							})
+						}
+					/>
+				)}
+				{!disabled &&
+					Range(0, player.matchsticks).map(i => (
+						<Matchstick colour={player.colour} key={i} />
+					))}
+			</div>
+		),
+		reduce: (state, action) =>
+			state.setIn(['players', action.playerIndex, 'name'], action.name),
+	}),
 })
 
-const moves = fromJS({
+const board = fromJS({
 	expand: new Move({
 		render: ({ state, dispatch, player, disabled }) => {
-			const pan = useContext(Pan)
 			if (disabled) return null
 
 			const possibleExpansionEdges =
@@ -237,7 +256,6 @@ const moves = fromJS({
 				.valueSeq()
 				.map(e => (
 					<Edge
-						{...pan}
 						key={`${e.u},${e.v},${e.s}`}
 						edge={e}
 						data-edge={JSON.stringify(e)}
@@ -261,7 +279,6 @@ const moves = fromJS({
 
 	move: new Move({
 		render: ({ state, dispatch, disabled }) => {
-			const pan = useContext(Pan)
 			if (disabled) return null
 
 			const possibleMoveVertices = state.players
@@ -275,7 +292,6 @@ const moves = fromJS({
 				.valueSeq()
 				.map(v => (
 					<Vertex
-						{...pan}
 						key={`${v.u},${v.v}`}
 						vertex={v}
 						data-vertex={JSON.stringify(v)}
@@ -290,14 +306,12 @@ const moves = fromJS({
 
 	resupply: new Move({
 		render: ({ state, dispatch, player, disabled }) => {
-			const pan = useContext(Pan)
 			const hexagons = findHexagons(player.edges)
 
 			return player.edges
 				.valueSeq()
 				.map(e => (
 					<Edge
-						{...pan}
 						key={`${e.u},${e.v},${e.s}`}
 						edge={e}
 						colour={
@@ -318,7 +332,6 @@ const moves = fromJS({
 
 	assault: new Move({
 		render: ({ state, dispatch, player, disabled }) => {
-			const pan = useContext(Pan)
 			if (disabled) return null
 			const otherPlayer = state.players.delete(state.currentPlayer).first()
 
@@ -334,7 +347,6 @@ const moves = fromJS({
 				.valueSeq()
 				.map(e => (
 					<Edge
-						{...pan}
 						key={`${e.u},${e.v},${e.s}`}
 						edge={e}
 						data-edge={JSON.stringify(e)}
@@ -374,43 +386,10 @@ const moves = fromJS({
 		},
 	}),
 
-	initPlayer: new Move({
-		render: ({ state, dispatch, player, playerIndex, disabled }) => (
-			<div>
-				{player.name ? (
-					state.currentPlayer === playerIndex ? (
-						<strong>☞ {player.name}</strong>
-					) : (
-						player.name
-					)
-				) : (
-					<Input
-						placeholder={`Player ${playerIndex + 1}`}
-						onBlur={ev =>
-							dispatch({
-								playerIndex,
-								name: ev.target.value,
-							})
-						}
-					/>
-				)}
-				{!disabled &&
-					Range(0, player.matchsticks).map(i => (
-						<Matchstick colour={player.colour} key={i} />
-					))}
-			</div>
-		),
-		reduce: (state, action) =>
-			state.setIn(['players', action.playerIndex, 'name'], action.name),
-	}),
-
 	renderNode: new Move({
 		render: ({ player }) => {
-			const pan = useContext(Pan)
-
 			return (
 				<Vertex
-					{...pan}
 					key={`${player.name}-node`}
 					vertex={player.node}
 					theme={{ scale: 100, colour: player.colour }}
@@ -421,7 +400,8 @@ const moves = fromJS({
 })
 
 const movesReducer = (state, action) =>
-	moves
+	hud
+		.merge(board)
 		.get(action.type)
 		.reduce(state, action)
 		.update('currentPlayer', c => (c + 1) % 2)
@@ -480,6 +460,25 @@ const ScrollPane = styled.div`
 	overflow: hidden;
 `
 
+const Moves = ({ state, moves, dispatch, winner }) => (
+	<>
+		{state.players.map((player, index) =>
+			moves
+				.entrySeq()
+				.map(([type, move]) => (
+					<move.render
+						key={type}
+						state={state}
+						player={player}
+						playerIndex={index}
+						dispatch={action => dispatch({ type, ...action })}
+						disabled={state.players.some(player => !player.name) || winner}
+					/>
+				)),
+		)}
+	</>
+)
+
 const Board = () => {
 	const [state, dispatch] = useImmutableReducer(movesReducer, initialState)
 	const [winner, setWinner] = useState(null)
@@ -507,26 +506,14 @@ const Board = () => {
 
 	return (
 		<ScrollPane {...bind()}>
-			<Pan.Provider value={pan}>
-				{state.edges.valueSeq().map(e => (
-					<Edge key={`${e.u},${e.v},${e.s}`} edge={e} colour='red' {...pan} />
-				))}
-				{winner && <h1>{winner.name} wins!</h1>}
-				{state.players.map((player, index) =>
-					moves
-						.entrySeq()
-						.map(([type, move]) => (
-							<move.render
-								key={type}
-								state={state}
-								player={player}
-								playerIndex={index}
-								dispatch={action => dispatch({ type, ...action })}
-								disabled={state.players.some(player => !player.name) || winner}
-							/>
-						)),
-				)}
-			</Pan.Provider>
+			{state.edges.valueSeq().map(e => (
+				<Edge key={`${e.u},${e.v},${e.s}`} edge={e} colour='red' {...pan} />
+			))}
+			{winner && <h1>{winner.name} wins!</h1>}
+			<animated.div {...pan}>
+				<Moves moves={board} {...{ state, dispatch, winner }} />
+			</animated.div>
+			<Moves moves={hud} {...{ state, dispatch, winner }} />
 		</ScrollPane>
 	)
 }
